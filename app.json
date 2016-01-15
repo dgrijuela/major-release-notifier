@@ -1,0 +1,8 @@
+{
+  "name": "Major Release Notifier",
+  "description": "Send email when any dependency specified releases a major version",
+  "addons": [
+    "redistogo",
+    "scheduler:standard"
+  ]
+}
