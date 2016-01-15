@@ -1,6 +1,7 @@
 {
   "name": "Major Release Notifier",
   "description": "Send email when any dependency specified releases a major version",
+  "repository": "https://bitbucket.org/redradix/major-release-notifier",
   "addons": [
     "redistogo",
     "scheduler:standard"

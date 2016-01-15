@@ -6,4 +6,9 @@ These are the environment variables needed:
 - EMAILS: comma separated list of emails to send the notification to
 - DEPENDENCIES: object with the dependency names as keys, and the dependency urls as values, e.g. {"lodash":"https://github.com/lodash/lodash","react":"https://github.com/facebook/react"}
 
+Add-ons needed:
+
+- redistogo
+- scheduler:standard (run once a day, command: node index.js)
+
 [![Deploy](https://www.herokucdn.com/deploy/button.svg)](https://heroku.com/deploy)
