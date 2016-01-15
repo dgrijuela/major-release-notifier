@@ -61,7 +61,7 @@ let detectMajorVersion = (dependency, dependencyPackageJsonVersion, lastVersion)
   let lastVersionMajorVersion = lastVersion.match(majorVersionRegex)[1];
   if (dependencyPackageJsonVersionMajorVersion < lastVersionMajorVersion) {
     client.get(dependency + '-notification', (err, reply) => {
-      if (!!reply) {
+      if (!reply) {
         notify(dependency, dependencyPackageJsonVersion, lastVersion);
       }
     })
