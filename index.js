@@ -10,9 +10,8 @@ const client = redis.createClient({url: process.env.REDISTOGO_URL});
 const versionRegex = /(\d{1,2}\.\d{1,2}\.\d{1,2})/;
 const majorVersionRegex = /(\d{1,2})/;
 
-const dependencies = {
-  'lodash': 'https://github.com/lodash/lodash'
-}
+console.log('hola')
+const dependencies = JSON.parse(process.env.DEPENDENCIES);
 
 client.on("error", function (err) {
     console.log("Error " + err);
