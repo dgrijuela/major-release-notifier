@@ -5,7 +5,7 @@ require('isomorphic-fetch');
 const mandrill = require('mandrill-api/mandrill');
 const mandrill_client = new mandrill.Mandrill(process.env.MANDRILL_KEY);
 const redis = require("redis");
-const client = redis.createClient();
+const client = redis.createClient({url: process.env.REDISTOGO_URL});
 const versionRegex = /(\d{1,2}\.\d{1,2}\.\d{1,2})/;
 
 const dependencies = {
