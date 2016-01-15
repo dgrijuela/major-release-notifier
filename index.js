@@ -6,7 +6,9 @@ const mandrill = require('mandrill-api/mandrill');
 const mandrill_client = new mandrill.Mandrill(process.env.MANDRILL_KEY);
 const redis = require("redis");
 const client = redis.createClient({url: process.env.REDISTOGO_URL});
+
 const versionRegex = /(\d{1,2}\.\d{1,2}\.\d{1,2})/;
+const majorVersionRegex = /(\d{1,2})/;
 
 const dependencies = {
   'lodash': 'https://github.com/lodash/lodash'
@@ -55,17 +57,21 @@ let getLastVersion = (dependency) => {
 }
 
 let detectMajorVersion = (dependency, dependencyPackageJsonVersion, lastVersion) => {
-  let majorVersionRegex = /(\d{1,2})/;
   let dependencyPackageJsonVersionMajorVersion = dependencyPackageJsonVersion.match(majorVersionRegex)[1];
   let lastVersionMajorVersion = lastVersion.match(majorVersionRegex)[1];
   if (dependencyPackageJsonVersionMajorVersion < lastVersionMajorVersion) {
-    notify(dependency, dependencyPackageJsonVersion, lastVersion);
+    client.get(dependency + '-notification', (err, reply) => {
+      if (!!reply) {
+        notify(dependency, dependencyPackageJsonVersion, lastVersion);
+      }
+    })
   }
 }
 
 let notify = (dependency, dependencyPackageJsonVersion, lastVersion) => {
   mandrill_client.messages.send({"message": generateMessage(dependency, dependencyPackageJsonVersion, lastVersion)}, function(result) {
     console.log(result);
+    client.set(dependency + '-notification', lastVersion.match(majorVersionRegex)[1]);
   }, function(e) {
     console.log('A mandrill error occurred: ' + e.name + ' - ' + e.message);
   });
