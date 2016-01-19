@@ -65,13 +65,13 @@ let detectMajorVersion = (dependency, dependencyPackageJsonVersion, lastVersion)
   let lastVersionMinorVersion = lastVersion.match(minorVersionRegex)[1];
 
   if (dependencyPackageJsonVersionMajorVersion < lastVersionMajorVersion) {
-    client.get(dependency + lastVersion + '-notification', (err, reply) => {
+    client.get(dependency + '-' + lastVersion + '-notification', (err, reply) => {
       if (!reply) {
         notify(dependency, dependencyPackageJsonVersion, lastVersion);
       }
     })
   } else if (dependencyPackageJsonVersionMinorVersion < lastVersionMinorVersion && process.env.MINOR_NOTIFICATIONS == 'true') {
-    client.get(dependency + lastVersion + '-notification', (err, reply) => {
+    client.get(dependency + '-' + lastVersion + '-notification', (err, reply) => {
       if (!reply) {
         notify(dependency, dependencyPackageJsonVersion, lastVersion);
       }
@@ -87,7 +87,7 @@ let notify = (dependency, dependencyPackageJsonVersion, lastVersion) => {
   sendgrid.send(email, function(err, json) {
     if (err) { return console.error(err); }
     console.log(json);
-    client.set(dependency + '-notification', lastVersion.match(majorVersionRegex)[1]);
+    client.set(dependency + '-' + lastVersion + '-notification', lastVersion.match(majorVersionRegex)[1]);
   });
 }
 
