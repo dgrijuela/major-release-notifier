@@ -2,18 +2,21 @@
 
 require('es6-promise').polyfill();
 require('isomorphic-fetch');
-const mandrill = require('mandrill-api/mandrill');
-const mandrill_client = new mandrill.Mandrill(process.env.MANDRILL_KEY);
+
+var sendgrid = require("sendgrid")("SENDGRID_APIKEY");
+var email = new sendgrid.Email();
+
 const redis = require("redis");
 const client = redis.createClient({url: process.env.REDISTOGO_URL});
 
 const versionRegex = /(\d{1,2}\.\d{1,2}\.\d{1,2})/;
-const majorVersionRegex = /(\d{1,2})/;
+const majorVersionRegex = /(\d{1,2})\.\d{1,2}\.\d{1,2}/;
+const minorVersionRegex = /\d{1,2}\.(\d{1,2})\.\d{1,2}/;
 
 const dependencies = JSON.parse(process.env.DEPENDENCIES);
 
 client.on("error", function (err) {
-    console.log("Error " + err);
+  console.log("Error " + err);
 });
 
 fetch(process.env.PACKAGE_JSON_URL)
@@ -56,9 +59,19 @@ let getLastVersion = (dependency) => {
 
 let detectMajorVersion = (dependency, dependencyPackageJsonVersion, lastVersion) => {
   let dependencyPackageJsonVersionMajorVersion = dependencyPackageJsonVersion.match(majorVersionRegex)[1];
+  let dependencyPackageJsonVersionMinorVersion = dependencyPackageJsonVersion.match(minorVersionRegex)[1];
+
   let lastVersionMajorVersion = lastVersion.match(majorVersionRegex)[1];
+  let lastVersionMinorVersion = lastVersion.match(minorVersionRegex)[1];
+
   if (dependencyPackageJsonVersionMajorVersion < lastVersionMajorVersion) {
-    client.get(dependency + '-notification', (err, reply) => {
+    client.get(dependency + lastVersion + '-notification', (err, reply) => {
+      if (!reply) {
+        notify(dependency, dependencyPackageJsonVersion, lastVersion);
+      }
+    })
+  } else if (dependencyPackageJsonVersionMinorVersion < lastVersionMinorVersion && proccess.env.MINOR_NOTIFICATIONS == 'true') {
+    client.get(dependency + lastVersion + '-notification', (err, reply) => {
       if (!reply) {
         notify(dependency, dependencyPackageJsonVersion, lastVersion);
       }
@@ -67,26 +80,22 @@ let detectMajorVersion = (dependency, dependencyPackageJsonVersion, lastVersion)
 }
 
 let notify = (dependency, dependencyPackageJsonVersion, lastVersion) => {
-  mandrill_client.messages.send({"message": generateMessage(dependency, dependencyPackageJsonVersion, lastVersion)}, function(result) {
-    console.log(result);
+  var email = new sendgrid.Email(generateMessage(dependency, dependencyPackageJsonVersion, lastVersion);
+
+  email.setTos(process.env.EMAILS.split(','));
+
+  sendgrid.send(email, function(err, json) {
+    if (err) { return console.error(err); }
+    console.log(json);
     client.set(dependency + '-notification', lastVersion.match(majorVersionRegex)[1]);
-  }, function(e) {
-    console.log('A mandrill error occurred: ' + e.name + ' - ' + e.message);
   });
 }
 
 let generateMessage = (dependency, dependencyPackageJsonVersion, lastVersion) => {
-  let toField = process.env.EMAILS.split(',').map(email => {
-    return {
-      'email': email
-    }
-  });
-
   return {
     'html': '<p>I have detected that in the package.json ' + process.env.PACKAGE_JSON_URL + ' the dependency <b>' + dependency + '</b> has the version <b>' + dependencyPackageJsonVersion + '</b> selected and the last one available is the <b>' + lastVersion + '</b>.</p>' + '<p>Go and check out the last changes!: ' + dependencies[dependency] + '.</p>',
     'subject': 'There is a major release available for ' + dependency + ': ' + lastVersion,
-    'from_email': 'hi@ciruapp.com',
-    'from_name': 'Major Release Notifier',
-    'to': toField
+    'from': 'hi@ciruapp.com',
+    'fromname': 'Major Release Notifier'
   }
 }
