@@ -1,5 +1,5 @@
 {
-  "name": "major-version-notifier",
+  "name": "Dependencies Releases Notifier",
   "version": "1.0.0",
   "description": "Send email when any dependency specified releases a major version",
   "main": "index.js",

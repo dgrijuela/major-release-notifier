@@ -3,7 +3,7 @@
 require('es6-promise').polyfill();
 require('isomorphic-fetch');
 
-var sendgrid = require("sendgrid")("SENDGRID_APIKEY");
+var sendgrid = require("sendgrid")(process.env.SENDGRID_KEY);
 var email = new sendgrid.Email();
 
 const redis = require("redis");
@@ -70,7 +70,7 @@ let detectMajorVersion = (dependency, dependencyPackageJsonVersion, lastVersion)
         notify(dependency, dependencyPackageJsonVersion, lastVersion);
       }
     })
-  } else if (dependencyPackageJsonVersionMinorVersion < lastVersionMinorVersion && proccess.env.MINOR_NOTIFICATIONS == 'true') {
+  } else if (dependencyPackageJsonVersionMinorVersion < lastVersionMinorVersion && process.env.MINOR_NOTIFICATIONS == 'true') {
     client.get(dependency + lastVersion + '-notification', (err, reply) => {
       if (!reply) {
         notify(dependency, dependencyPackageJsonVersion, lastVersion);
@@ -80,7 +80,7 @@ let detectMajorVersion = (dependency, dependencyPackageJsonVersion, lastVersion)
 }
 
 let notify = (dependency, dependencyPackageJsonVersion, lastVersion) => {
-  var email = new sendgrid.Email(generateMessage(dependency, dependencyPackageJsonVersion, lastVersion);
+  var email = new sendgrid.Email(generateMessage(dependency, dependencyPackageJsonVersion, lastVersion));
 
   email.setTos(process.env.EMAILS.split(','));
 
@@ -96,6 +96,6 @@ let generateMessage = (dependency, dependencyPackageJsonVersion, lastVersion) =>
     'html': '<p>I have detected that in the package.json ' + process.env.PACKAGE_JSON_URL + ' the dependency <b>' + dependency + '</b> has the version <b>' + dependencyPackageJsonVersion + '</b> selected and the last one available is the <b>' + lastVersion + '</b>.</p>' + '<p>Go and check out the last changes!: ' + dependencies[dependency] + '.</p>',
     'subject': 'There is a major release available for ' + dependency + ': ' + lastVersion,
     'from': 'hi@ciruapp.com',
-    'fromname': 'Major Release Notifier'
+    'fromname': 'Dependencies Releases Notifier'
   }
 }
