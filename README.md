@@ -5,10 +5,13 @@ These are the environment variables needed:
 - MANDRILL_KEY: Mandrill API key
 - EMAILS: comma separated list of emails to send the notification to
 - DEPENDENCIES: object with the dependency names as keys, and the dependency urls as values, e.g. {"lodash":"https://github.com/lodash/lodash","react":"https://github.com/facebook/react"}
+- SENDGRID_KEY: see credentials in settings -> reveal config vars, and generate api key from sendgrid page
+- MINOR_NOTIFICATIONS: set to true to receive emails for minor notifications
 
 Add-ons needed:
 
 - redistogo
 - scheduler:standard (run once a day, command: node index.js)
+- sendgrid
 
 [![Deploy](https://www.herokucdn.com/deploy/button.svg)](https://heroku.com/deploy)
