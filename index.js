@@ -95,7 +95,7 @@ let generateMessage = (dependency, dependencyPackageJsonVersion, lastVersion) =>
   return {
     'html': '<p>I have detected that in the package.json ' + process.env.PACKAGE_JSON_URL + ' the dependency <b>' + dependency + '</b> has the version <b>' + dependencyPackageJsonVersion + '</b> selected and the last one available is the <b>' + lastVersion + '</b>.</p>' + '<p>Go and check out the last changes!: ' + dependencies[dependency] + '.</p>',
     'subject': 'There is a major release available for ' + dependency + ': ' + lastVersion,
-    'from': 'hi@ciruapp.com',
-    'fromname': 'Dependencies Releases Notifier'
+    'from': process.env.SENDER_EMAIL,
+    'fromname': process.env.SENDER_NAME
   }
 }
