@@ -19,21 +19,23 @@ client.on("error", function (err) {
   console.log("Error " + err);
 });
 
-fetch(process.env.PACKAGE_JSON_URL)
-.then(response => {
-  return response.text();
-})
-.then(text => {
-  let parsedText = JSON.parse(text);
-  Object.keys(dependencies).forEach(dependency => {
-    let dependencyPackageJsonVersion = parsedText.dependencies[dependency].match(versionRegex)[1];
-    client.set(dependency, dependencyPackageJsonVersion, redis.print);
-    checkLastVersion(dependency, dependencyPackageJsonVersion);
+process.env.PACKAGE_JSON_URLS.split(/[ ,]+/).forEach(package_json => {
+  fetch(package_json)
+  .then(response => {
+    return response.text();
+  })
+  .then(text => {
+    let parsedText = JSON.parse(text);
+    Object.keys(dependencies).forEach(dependency => {
+      let dependencyPackageJsonVersion = parsedText.dependencies[dependency].match(versionRegex)[1];
+      client.set(dependency, dependencyPackageJsonVersion, redis.print);
+      checkLastVersion(dependency, dependencyPackageJsonVersion);
+    });
+  })
+  .catch(error => {
+    console.log(error);
   });
 })
-.catch(error => {
-  console.log(error);
-});
 
 let checkLastVersion = (dependency, dependencyPackageJsonVersion) => {
   getLastVersion(dependency).then(lastVersion => {
@@ -82,7 +84,7 @@ let detectMajorVersion = (dependency, dependencyPackageJsonVersion, lastVersion)
 let notify = (dependency, dependencyPackageJsonVersion, lastVersion) => {
   var email = new sendgrid.Email(generateMessage(dependency, dependencyPackageJsonVersion, lastVersion));
 
-  email.setTos(process.env.EMAILS.split(','));
+  email.setTos(process.env.EMAILS.split(/[ ,]+/));
 
   sendgrid.send(email, function(err, json) {
     if (err) { return console.error(err); }
