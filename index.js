@@ -9,15 +9,18 @@ var email = new sendgrid.Email();
 const redis = require("redis");
 const client = redis.createClient({url: process.env.REDISTOGO_URL});
 
+const npmUrl = 'https://www.npmjs.com/package/';
+
 const versionRegex = /(\d{1,2}\.\d{1,2}\.\d{1,2})/;
+const npmVersionRegex = /(\d{1,2}\.\d{1,2}\.\d{1,2}).*\<\/strong\>\s+is the latest/;
 const majorVersionRegex = /(\d{1,2})\.\d{1,2}\.\d{1,2}/;
 const minorVersionRegex = /\d{1,2}\.(\d{1,2})\.\d{1,2}/;
 
-const dependencies = JSON.parse(process.env.DEPENDENCIES);
+const approvedDependencies = process.env.DEPENDENCIES && process.env.DEPENDENCIES.split(/[ ,]+/);
 const packageJsonUrls = process.env.PACKAGE_JSON_URLS.split(/[ ,]+/);
 
 client.on("error", function (err) {
-  console.log("Error " + err);
+  console.error("Error " + err);
 });
 
 packageJsonUrls.forEach(packageJsonUrl => {
@@ -27,38 +30,44 @@ packageJsonUrls.forEach(packageJsonUrl => {
   })
   .then(text => {
     let parsedText = JSON.parse(text);
-    Object.keys(dependencies).forEach(dependency => {
-      if (!!parsedText.dependencies[dependency]) {
-        let dependencyPackageJsonVersion = parsedText.dependencies[dependency].match(versionRegex)[1];
-        client.set(dependency, dependencyPackageJsonVersion, redis.print);
-        checkLastVersion(dependency, dependencyPackageJsonVersion, packageJsonUrl);
+    let dependencies = parsedText.dependencies;
+    let devDependencies = parsedText.devDependencies;
+    let allDependencies = Object.assign(dependencies, devDependencies);
+
+    let allDependenciesArray = Object.keys(allDependencies).filter(dependency => {
+      if (approvedDependencies) {
+        return contains(approvedDependencies, dependency);
+      } else {
+        return true
       }
+    });
+
+    allDependenciesArray.forEach(dependency => {
+      let dependencyPackageJsonVersion = allDependencies[dependency].match(versionRegex)[1];
+      client.set(dependency, dependencyPackageJsonVersion);
+      getLastVersion(dependency).then(lastVersion => {
+        client.get(dependency, (err, dependencyPackageJsonVersion) => {
+          if (err) console.error('error setting the package json version');
+          detectMajorVersion(dependency, dependencyPackageJsonVersion, lastVersion, packageJsonUrl);
+        })
+      });
     });
   })
   .catch(error => {
-    console.log(error);
+    console.error(error);
   });
 })
 
-let checkLastVersion = (dependency, dependencyPackageJsonVersion, packageJsonUrl) => {
-  getLastVersion(dependency).then(lastVersion => {
-    client.get(dependency, (err, dependencyPackageJsonVersion) => {
-      detectMajorVersion(dependency, dependencyPackageJsonVersion, lastVersion, packageJsonUrl);
-    })
-  });
-}
-
 let getLastVersion = (dependency) => {
-  return fetch(dependencies[dependency] + '/releases.atom')
+  return fetch(npmUrl + dependency)
   .then(response => {
     return response.text();
   })
   .then(text => {
-    let titleTag = text.match(/<title>[\s\S]+?<title>(.+?)<\/title>/)[1];
-    return titleTag.match(versionRegex)[1];
+    return text.match(npmVersionRegex)[1];
   })
   .catch(error => {
-    console.log('error: ' + error);
+    console.error('error: ' + error);
   });
 }
 
@@ -71,12 +80,14 @@ let detectMajorVersion = (dependency, dependencyPackageJsonVersion, lastVersion,
 
   if (dependencyPackageJsonVersionMajorVersion < lastVersionMajorVersion) {
     client.get(dependency + '-' + lastVersion + '-notification', (err, reply) => {
+      if (err) console.error('error getting dependency version notification (for major)');
       if (!reply) {
         notify(dependency, dependencyPackageJsonVersion, lastVersion, packageJsonUrl);
       }
     })
   } else if (dependencyPackageJsonVersionMinorVersion < lastVersionMinorVersion && process.env.MINOR_NOTIFICATIONS == 'true') {
     client.get(dependency + '-' + lastVersion + '-notification', (err, reply) => {
+      if (err) console.error('error getting dependency version notification (for minor)');
       if (!reply) {
         notify(dependency, dependencyPackageJsonVersion, lastVersion);
       }
@@ -98,9 +109,18 @@ let notify = (dependency, dependencyPackageJsonVersion, lastVersion, packageJson
 
 let generateMessage = (dependency, dependencyPackageJsonVersion, lastVersion, packageJsonUrl) => {
   return {
-    'html': '<p>I have detected that in the package.json ' + packageJsonUrl + ' the dependency <b>' + dependency + '</b> has the version <b>' + dependencyPackageJsonVersion + '</b> selected and the last one available is the <b>' + lastVersion + '</b>.</p>' + '<p>Go and check out the last changes!: ' + dependencies[dependency] + '.</p>',
+    'html': '<p>I have detected that in the package.json ' + packageJsonUrl + ' the dependency <b>' + dependency + '</b> has the version <b>' + dependencyPackageJsonVersion + '</b> selected and the last one available is the <b>' + lastVersion + '</b>.</p>' + '<p>Go and check out the last changes!: ' + npmUrl + dependency + '.</p>',
     'subject': 'There is a major release available for ' + dependency + ': ' + lastVersion,
     'from': process.env.SENDER_EMAIL,
     'fromname': process.env.SENDER_NAME
   }
+}
+
+function contains(a, obj) {
+  for (var i = 0; i < a.length; i++) {
+    if (a[i] === obj) {
+      return true;
+    }
+  }
+  return false;
 }
