@@ -14,12 +14,13 @@ const majorVersionRegex = /(\d{1,2})\.\d{1,2}\.\d{1,2}/;
 const minorVersionRegex = /\d{1,2}\.(\d{1,2})\.\d{1,2}/;
 
 const dependencies = JSON.parse(process.env.DEPENDENCIES);
+const packageJsonUrls = process.env.PACKAGE_JSON_URLS.split(/[ ,]+/);
 
 client.on("error", function (err) {
   console.log("Error " + err);
 });
 
-process.env.PACKAGE_JSON_URLS.split(/[ ,]+/).forEach(packageJsonUrl => {
+packageJsonUrls.forEach(packageJsonUrl => {
   fetch(packageJsonUrl)
   .then(response => {
     return response.text();
@@ -27,9 +28,11 @@ process.env.PACKAGE_JSON_URLS.split(/[ ,]+/).forEach(packageJsonUrl => {
   .then(text => {
     let parsedText = JSON.parse(text);
     Object.keys(dependencies).forEach(dependency => {
-      let dependencyPackageJsonVersion = parsedText.dependencies[dependency].match(versionRegex)[1];
-      client.set(dependency, dependencyPackageJsonVersion, redis.print);
-      checkLastVersion(dependency, dependencyPackageJsonVersion, packageJsonUrl);
+      if (!!parsedText.dependencies[dependency]) {
+        let dependencyPackageJsonVersion = parsedText.dependencies[dependency].match(versionRegex)[1];
+        client.set(dependency, dependencyPackageJsonVersion, redis.print);
+        checkLastVersion(dependency, dependencyPackageJsonVersion, packageJsonUrl);
+      }
     });
   })
   .catch(error => {
@@ -81,7 +84,7 @@ let detectMajorVersion = (dependency, dependencyPackageJsonVersion, lastVersion,
   }
 }
 
-let notify = (dependency, dependencyPackageJsonVersion, lastVersion) => {
+let notify = (dependency, dependencyPackageJsonVersion, lastVersion, packageJsonUrl) => {
   var email = new sendgrid.Email(generateMessage(dependency, dependencyPackageJsonVersion, lastVersion, packageJsonUrl));
 
   email.setTos(process.env.EMAILS.split(/[ ,]+/));
