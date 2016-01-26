@@ -19,8 +19,8 @@ client.on("error", function (err) {
   console.log("Error " + err);
 });
 
-process.env.PACKAGE_JSON_URLS.split(/[ ,]+/).forEach(package_json => {
-  fetch(package_json)
+process.env.PACKAGE_JSON_URLS.split(/[ ,]+/).forEach(packageJsonUrl => {
+  fetch(packageJsonUrl)
   .then(response => {
     return response.text();
   })
@@ -29,7 +29,7 @@ process.env.PACKAGE_JSON_URLS.split(/[ ,]+/).forEach(package_json => {
     Object.keys(dependencies).forEach(dependency => {
       let dependencyPackageJsonVersion = parsedText.dependencies[dependency].match(versionRegex)[1];
       client.set(dependency, dependencyPackageJsonVersion, redis.print);
-      checkLastVersion(dependency, dependencyPackageJsonVersion);
+      checkLastVersion(dependency, dependencyPackageJsonVersion, packageJsonUrl);
     });
   })
   .catch(error => {
@@ -37,10 +37,10 @@ process.env.PACKAGE_JSON_URLS.split(/[ ,]+/).forEach(package_json => {
   });
 })
 
-let checkLastVersion = (dependency, dependencyPackageJsonVersion) => {
+let checkLastVersion = (dependency, dependencyPackageJsonVersion, packageJsonUrl) => {
   getLastVersion(dependency).then(lastVersion => {
     client.get(dependency, (err, dependencyPackageJsonVersion) => {
-      detectMajorVersion(dependency, dependencyPackageJsonVersion, lastVersion);
+      detectMajorVersion(dependency, dependencyPackageJsonVersion, lastVersion, packageJsonUrl);
     })
   });
 }
@@ -59,7 +59,7 @@ let getLastVersion = (dependency) => {
   });
 }
 
-let detectMajorVersion = (dependency, dependencyPackageJsonVersion, lastVersion) => {
+let detectMajorVersion = (dependency, dependencyPackageJsonVersion, lastVersion, packageJsonUrl) => {
   let dependencyPackageJsonVersionMajorVersion = dependencyPackageJsonVersion.match(majorVersionRegex)[1];
   let dependencyPackageJsonVersionMinorVersion = dependencyPackageJsonVersion.match(minorVersionRegex)[1];
 
@@ -69,7 +69,7 @@ let detectMajorVersion = (dependency, dependencyPackageJsonVersion, lastVersion)
   if (dependencyPackageJsonVersionMajorVersion < lastVersionMajorVersion) {
     client.get(dependency + '-' + lastVersion + '-notification', (err, reply) => {
       if (!reply) {
-        notify(dependency, dependencyPackageJsonVersion, lastVersion);
+        notify(dependency, dependencyPackageJsonVersion, lastVersion, packageJsonUrl);
       }
     })
   } else if (dependencyPackageJsonVersionMinorVersion < lastVersionMinorVersion && process.env.MINOR_NOTIFICATIONS == 'true') {
@@ -82,7 +82,7 @@ let detectMajorVersion = (dependency, dependencyPackageJsonVersion, lastVersion)
 }
 
 let notify = (dependency, dependencyPackageJsonVersion, lastVersion) => {
-  var email = new sendgrid.Email(generateMessage(dependency, dependencyPackageJsonVersion, lastVersion));
+  var email = new sendgrid.Email(generateMessage(dependency, dependencyPackageJsonVersion, lastVersion, packageJsonUrl));
 
   email.setTos(process.env.EMAILS.split(/[ ,]+/));
 
@@ -93,9 +93,9 @@ let notify = (dependency, dependencyPackageJsonVersion, lastVersion) => {
   });
 }
 
-let generateMessage = (dependency, dependencyPackageJsonVersion, lastVersion) => {
+let generateMessage = (dependency, dependencyPackageJsonVersion, lastVersion, packageJsonUrl) => {
   return {
-    'html': '<p>I have detected that in the package.json ' + process.env.PACKAGE_JSON_URL + ' the dependency <b>' + dependency + '</b> has the version <b>' + dependencyPackageJsonVersion + '</b> selected and the last one available is the <b>' + lastVersion + '</b>.</p>' + '<p>Go and check out the last changes!: ' + dependencies[dependency] + '.</p>',
+    'html': '<p>I have detected that in the package.json ' + packageJsonUrl + ' the dependency <b>' + dependency + '</b> has the version <b>' + dependencyPackageJsonVersion + '</b> selected and the last one available is the <b>' + lastVersion + '</b>.</p>' + '<p>Go and check out the last changes!: ' + dependencies[dependency] + '.</p>',
     'subject': 'There is a major release available for ' + dependency + ': ' + lastVersion,
     'from': process.env.SENDER_EMAIL,
     'fromname': process.env.SENDER_NAME
