@@ -89,7 +89,7 @@ let detectMajorVersion = (dependency, dependencyPackageJsonVersion, lastVersion,
     client.get(dependency + '-' + lastVersion + '-notification', (err, reply) => {
       if (err) console.error('error getting dependency version notification (for minor)');
       if (!reply) {
-        notify(dependency, dependencyPackageJsonVersion, lastVersion);
+        notify(dependency, dependencyPackageJsonVersion, lastVersion, packageJsonUrl);
       }
     })
   }
