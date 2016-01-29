@@ -89,8 +89,8 @@ let detectMajorVersion = (dependency, dependencyPackageJsonVersion, lastVersion,
   }
 }
 
-let notify = (dependency, dependencyPackageJsonVersion, lastVersion, packageJsonUrl) => {
-  var email = new sendgrid.Email(generateMessage(dependency, dependencyPackageJsonVersion, lastVersion, packageJsonUrl));
+let notify = (dependency, dependencyPackageJsonVersion, lastVersion, packageJsonUrl, isMajor) => {
+  var email = new sendgrid.Email(generateMessage(dependency, dependencyPackageJsonVersion, lastVersion, packageJsonUrl, isMajor));
 
   email.setTos(process.env.EMAILS.split(/[ ,]+/));
 

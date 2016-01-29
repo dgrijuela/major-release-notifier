@@ -11,7 +11,7 @@ These are the environment variables needed:
 Add-ons needed:
 
 - redistogo
-- scheduler:standard (run once a day, command: node index.js)
+- scheduler:standard (command: node index.js)
 - sendgrid
 
 [![Deploy](https://www.herokucdn.com/deploy/button.svg)](https://heroku.com/deploy)
