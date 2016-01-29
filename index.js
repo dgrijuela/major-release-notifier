@@ -16,8 +16,8 @@ const npmVersionRegex = /(\d{1,2}\.\d{1,2}\.\d{1,2}).*\<\/strong\>\s+is the late
 const majorVersionRegex = /(\d{1,2})\.\d{1,2}\.\d{1,2}/;
 const minorVersionRegex = /\d{1,2}\.(\d{1,2})\.\d{1,2}/;
 
-const approvedDependencies = process.env.DEPENDENCIES && process.env.DEPENDENCIES.split(/[ ,]+/);
-const packageJsonUrls = process.env.PACKAGE_JSON_URLS.split(/[ ,]+/);
+const minorDependencies = process.env.MINOR_DEPENDENCIES ? process.env.MINOR_DEPENDENCIES.split(/[ ,]+/) : [];
+const packageJsonUrls = process.env.PACKAGE_JSON_URLS ? process.env.PACKAGE_JSON_URLS.split(/[ ,]+/) : [];
 
 client.on("error", function (err) {
   console.error("Error " + err);
@@ -34,13 +34,7 @@ packageJsonUrls.forEach(packageJsonUrl => {
     let devDependencies = parsedText.devDependencies;
     let allDependencies = Object.assign(dependencies, devDependencies);
 
-    let allDependenciesArray = Object.keys(allDependencies).filter(dependency => {
-      if (approvedDependencies) {
-        return contains(approvedDependencies, dependency);
-      } else {
-        return true
-      }
-    });
+    let allDependenciesArray = Object.keys(allDependencies);
 
     allDependenciesArray.forEach(dependency => {
       let dependencyPackageJsonVersion = allDependencies[dependency].match(versionRegex)[1];
@@ -78,14 +72,14 @@ let detectMajorVersion = (dependency, dependencyPackageJsonVersion, lastVersion,
   let lastVersionMajorVersion = lastVersion.match(majorVersionRegex)[1];
   let lastVersionMinorVersion = lastVersion.match(minorVersionRegex)[1];
 
-  if (dependencyPackageJsonVersionMajorVersion < lastVersionMajorVersion) {
+  if (parseInt(dependencyPackageJsonVersionMajorVersion) < parseInt(lastVersionMajorVersion)) {
     client.get(dependency + '-' + lastVersion + '-notification', (err, reply) => {
       if (err) console.error('error getting dependency version notification (for major)');
       if (!reply) {
         notify(dependency, dependencyPackageJsonVersion, lastVersion, packageJsonUrl, true);
       }
     })
-  } else if (dependencyPackageJsonVersionMinorVersion < lastVersionMinorVersion && process.env.MINOR_NOTIFICATIONS == 'true') {
+  } else if ((parseInt(dependencyPackageJsonVersionMinorVersion) < parseInt(lastVersionMinorVersion))  && contains(minorDependencies, dependency)) {
     client.get(dependency + '-' + lastVersion + '-notification', (err, reply) => {
       if (err) console.error('error getting dependency version notification (for minor)');
       if (!reply) {
@@ -103,7 +97,7 @@ let notify = (dependency, dependencyPackageJsonVersion, lastVersion, packageJson
   sendgrid.send(email, function(err, json) {
     if (err) { return console.error(err); }
     console.log(json);
-    client.set(dependency + '-' + lastVersion + '-notification', lastVersion.match(majorVersionRegex)[1]);
+    client.set(dependency + '-' + lastVersion + '-notification', 'true');
   });
 }
 
