@@ -82,14 +82,14 @@ let detectMajorVersion = (dependency, dependencyPackageJsonVersion, lastVersion,
     client.get(dependency + '-' + lastVersion + '-notification', (err, reply) => {
       if (err) console.error('error getting dependency version notification (for major)');
       if (!reply) {
-        notify(dependency, dependencyPackageJsonVersion, lastVersion, packageJsonUrl);
+        notify(dependency, dependencyPackageJsonVersion, lastVersion, packageJsonUrl, true);
       }
     })
   } else if (dependencyPackageJsonVersionMinorVersion < lastVersionMinorVersion && process.env.MINOR_NOTIFICATIONS == 'true') {
     client.get(dependency + '-' + lastVersion + '-notification', (err, reply) => {
       if (err) console.error('error getting dependency version notification (for minor)');
       if (!reply) {
-        notify(dependency, dependencyPackageJsonVersion, lastVersion, packageJsonUrl);
+        notify(dependency, dependencyPackageJsonVersion, lastVersion, packageJsonUrl, false);
       }
     })
   }
@@ -107,10 +107,11 @@ let notify = (dependency, dependencyPackageJsonVersion, lastVersion, packageJson
   });
 }
 
-let generateMessage = (dependency, dependencyPackageJsonVersion, lastVersion, packageJsonUrl) => {
+let generateMessage = (dependency, dependencyPackageJsonVersion, lastVersion, packageJsonUrl, isMajor) => {
+  let grade = isMajor ? 'major' : 'minor';
   return {
     'html': '<p>I have detected that in the package.json ' + packageJsonUrl + ' the dependency <b>' + dependency + '</b> has the version <b>' + dependencyPackageJsonVersion + '</b> selected and the last one available is the <b>' + lastVersion + '</b>.</p>' + '<p>Go and check out the last changes!: ' + npmUrl + dependency + '.</p>',
-    'subject': 'There is a release update available for ' + dependency + ': ' + lastVersion,
+    'subject': 'There is a ' + grade + 'release available for ' + dependency + ': ' + lastVersion,
     'from': process.env.SENDER_EMAIL,
     'fromname': process.env.SENDER_NAME
   }
